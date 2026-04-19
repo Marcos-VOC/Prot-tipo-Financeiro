@@ -1,0 +1,266 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+
+<!-- ── Cabeçalho ──────────────────────────────────── -->
+<div class="page-header">
+  <div>
+    <h4><i class="bi bi-speedometer2 me-2"></i>Dashboard Financeiro</h4>
+    <span class="text-muted" style="font-size:.85rem">
+      Resumo de {{ mes_nome }} / {{ ano }}
+    </span>
+  </div>
+
+  <!-- Filtro mês/ano -->
+  <form class="d-flex gap-2 align-items-center" method="GET">
+    <select name="mes" class="form-select form-select-sm" style="width:130px">
+      {% for n, nome in meses_pt.items() %}
+        <option value="{{ n }}" {% if n == mes %}selected{% endif %}>{{ nome }}</option>
+      {% endfor %}
+    </select>
+    <select name="ano" class="form-select form-select-sm" style="width:90px">
+      {% for a in anos %}
+        <option {% if a|int == ano %}selected{% endif %}>{{ a }}</option>
+      {% endfor %}
+    </select>
+    <button class="btn btn-sm btn-primary">
+      <i class="bi bi-funnel"></i> Filtrar
+    </button>
+    <a href="{{ url_for('exportar_config') }}?mes={{ mes }}&ano={{ ano }}"
+       class="btn btn-sm btn-success" title="Configurar e exportar relatório">
+      <i class="bi bi-file-earmark-excel me-1"></i>Exportar .xlsx
+    </a>
+  </form>
+</div>
+
+<!-- ── Cards de resumo ────────────────────────────── -->
+<div class="row g-3 mb-4">
+
+  <!-- Entradas -->
+  <div class="col-md-4">
+    <div class="card card-resumo card-entrada p-3">
+      <div class="d-flex justify-content-between align-items-start">
+        <div>
+          <div class="label">Total Recebido</div>
+          <div class="valor text-success">
+            R$ {{ "%.2f"|format(entradas)|replace(".",",") }}
+          </div>
+          <small class="text-muted">{{ mes_nome }} {{ ano }}</small>
+        </div>
+        <div class="icone" style="background:#d1fae5; color:#065f46">
+          <i class="bi bi-arrow-up-circle-fill"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Saídas -->
+  <div class="col-md-4">
+    <div class="card card-resumo card-saida p-3">
+      <div class="d-flex justify-content-between align-items-start">
+        <div>
+          <div class="label">Total Gasto</div>
+          <div class="valor text-danger">
+            R$ {{ "%.2f"|format(saidas)|replace(".",",") }}
+          </div>
+          <small class="text-muted">{{ mes_nome }} {{ ano }}</small>
+        </div>
+        <div class="icone" style="background:#fee2e2; color:#991b1b">
+          <i class="bi bi-arrow-down-circle-fill"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Lucro líquido -->
+  <div class="col-md-4">
+    <div class="card card-resumo card-liquido p-3">
+      <div class="d-flex justify-content-between align-items-start">
+        <div>
+          <div class="label">Lucro Líquido</div>
+          <div class="valor {% if liquido >= 0 %}text-primary{% else %}text-danger{% endif %}">
+            R$ {{ "%.2f"|format(liquido)|replace(".",",") }}
+          </div>
+          <small class="text-muted">
+            Margem:
+            {% if entradas > 0 %}
+              {{ "%.1f"|format(liquido/entradas*100) }}%
+            {% else %}–{% endif %}
+          </small>
+        </div>
+        <div class="icone" style="background:#dbeafe; color:#1e40af">
+          <i class="bi bi-graph-up-arrow"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── Gráfico + Top categorias ──────────────────── -->
+<div class="row g-3 mb-4">
+
+  <!-- Gráfico anual -->
+  <div class="col-lg-8">
+    <div class="card border-0 shadow-sm rounded-3 p-3 h-100">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h6 class="fw-bold mb-0">Entradas × Saídas — {{ ano }}</h6>
+        <span class="badge bg-light text-dark border">Anual</span>
+      </div>
+      <canvas id="chartAnual" height="110"></canvas>
+    </div>
+  </div>
+
+  <!-- Top categorias -->
+  <div class="col-lg-4">
+    <div class="card border-0 shadow-sm rounded-3 p-3 h-100">
+      <h6 class="fw-bold mb-3">Top Receitas — {{ mes_nome }}</h6>
+      {% if top_receitas %}
+        {% for r in top_receitas %}
+          <div class="mb-2">
+            <div class="d-flex justify-content-between" style="font-size:.82rem">
+              <span>{{ r.categoria }}</span>
+              <span class="text-success fw-semibold">
+                R$ {{ "%.2f"|format(r.total)|replace(".",",") }}
+              </span>
+            </div>
+            {% if entradas > 0 %}
+              <div class="progress" style="height:5px;margin-top:3px">
+                <div class="progress-bar bg-success"
+                     style="width:{{ (r.total/entradas*100)|round }}%"></div>
+              </div>
+            {% endif %}
+          </div>
+        {% endfor %}
+      {% else %}
+        <p class="text-muted" style="font-size:.85rem">Nenhuma receita no período.</p>
+      {% endif %}
+
+      <hr class="my-3" />
+
+      <h6 class="fw-bold mb-3">Top Despesas — {{ mes_nome }}</h6>
+      {% if top_despesas %}
+        {% for r in top_despesas %}
+          <div class="mb-2">
+            <div class="d-flex justify-content-between" style="font-size:.82rem">
+              <span>{{ r.categoria }}</span>
+              <span class="text-danger fw-semibold">
+                R$ {{ "%.2f"|format(r.total)|replace(".",",") }}
+              </span>
+            </div>
+            {% if saidas > 0 %}
+              <div class="progress" style="height:5px;margin-top:3px">
+                <div class="progress-bar bg-danger"
+                     style="width:{{ (r.total/saidas*100)|round }}%"></div>
+              </div>
+            {% endif %}
+          </div>
+        {% endfor %}
+      {% else %}
+        <p class="text-muted" style="font-size:.85rem">Nenhuma despesa no período.</p>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+
+<!-- ── Últimas movimentações ──────────────────────── -->
+<div class="card border-0 shadow-sm rounded-3">
+  <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center pt-3 pb-0 px-3">
+    <h6 class="fw-bold mb-0">Últimas Movimentações do Mês</h6>
+    <a href="{{ url_for('movimentacoes', mes=mes, ano=ano) }}"
+       class="btn btn-sm btn-outline-primary">Ver todas</a>
+  </div>
+  <div class="card-body p-0">
+    {% if recentes %}
+    <table class="table table-mov table-hover mb-0">
+      <thead>
+        <tr>
+          <th class="ps-3">Data</th>
+          <th>Tipo</th>
+          <th>Categoria</th>
+          <th>Descrição</th>
+          <th class="text-end pe-3">Valor</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in recentes %}
+        <tr>
+          <td class="ps-3 text-muted" style="font-size:.85rem">
+            {{ m.data[8:10] }}/{{ m.data[5:7] }}/{{ m.data[:4] }}
+          </td>
+          <td>
+            <span class="badge {% if m.tipo=='Entrada' %}badge-entrada{% else %}badge-saida{% endif %} px-2">
+              {% if m.tipo == 'Entrada' %}▲{% else %}▼{% endif %} {{ m.tipo }}
+            </span>
+          </td>
+          <td style="font-size:.85rem">{{ m.categoria }}</td>
+          <td style="font-size:.85rem">{{ m.descricao }}</td>
+          <td class="text-end pe-3 fw-semibold
+                     {% if m.tipo=='Entrada' %}text-success{% else %}text-danger{% endif %}">
+            R$ {{ "%.2f"|format(m.valor)|replace(".",",") }}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+      <p class="text-center text-muted py-4">
+        Nenhuma movimentação em {{ mes_nome }}/{{ ano }}.
+        <a href="{{ url_for('nova') }}">Cadastrar agora</a>
+      </p>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}
+
+<!-- ── Scripts do gráfico ─────────────────────────── -->
+{% block scripts %}
+<script>
+const graficoData = {{ grafico | tojson }};
+
+const ctx = document.getElementById("chartAnual").getContext("2d");
+new Chart(ctx, {
+  type: "bar",
+  data: {
+    labels: graficoData.map(d => d.mes),
+    datasets: [
+      {
+        label: "Entradas",
+        data: graficoData.map(d => d.entradas),
+        backgroundColor: "rgba(25,135,84,.75)",
+        borderRadius: 5,
+      },
+      {
+        label: "Saídas",
+        data: graficoData.map(d => d.saidas),
+        backgroundColor: "rgba(220,53,69,.65)",
+        borderRadius: 5,
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { position: "top" },
+      tooltip: {
+        callbacks: {
+          label: ctx =>
+            " R$ " + ctx.parsed.y.toLocaleString("pt-BR", {minimumFractionDigits:2})
+        }
+      }
+    },
+    scales: {
+      y: {
+        ticks: {
+          callback: v =>
+            "R$ " + v.toLocaleString("pt-BR", {minimumFractionDigits:0})
+        }
+      }
+    }
+  }
+});
+</script>
+{% endblock %}

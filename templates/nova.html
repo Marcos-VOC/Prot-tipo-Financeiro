@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% block title %}Nova Movimentação{% endblock %}
+
+{% block head_extra %}
+<style>
+  .tipo-btn {
+    cursor: pointer;
+    border: 2px solid #dee2e6;
+    border-radius: 12px;
+    padding: 14px 20px;
+    text-align: center;
+    transition: all .15s;
+    user-select: none;
+  }
+  .tipo-btn.selected-entrada {
+    border-color: #198754;
+    background: #d1fae5;
+    color: #065f46;
+  }
+  .tipo-btn.selected-saida {
+    border-color: #dc3545;
+    background: #fee2e2;
+    color: #991b1b;
+  }
+  .tipo-btn:hover { opacity: .85; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+  <h4><i class="bi bi-plus-circle me-2"></i>Nova Movimentação</h4>
+  <a href="{{ url_for('movimentacoes') }}" class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-arrow-left me-1"></i> Voltar
+  </a>
+</div>
+
+<div class="form-card">
+
+  {% if erro %}
+    <div class="alert alert-danger d-flex align-items-center gap-2" role="alert">
+      <i class="bi bi-exclamation-triangle-fill"></i>
+      {{ erro }}
+    </div>
+  {% endif %}
+
+  <form method="POST" action="{{ url_for('nova') }}" id="formNova">
+
+    <!-- Tipo -->
+    <div class="mb-4">
+      <label class="form-label fw-semibold">Tipo de Movimentação</label>
+      <div class="row g-2">
+        <div class="col-6">
+          <div class="tipo-btn {% if tipo_pre=='Entrada' %}selected-entrada{% endif %}"
+               id="btn-entrada" onclick="selectTipo('Entrada')">
+            <i class="bi bi-arrow-up-circle-fill fs-4 d-block mb-1 text-success"></i>
+            <span class="fw-bold">Entrada</span><br>
+            <small class="text-muted">Receita / Honorário</small>
+          </div>
+        </div>
+        <div class="col-6">
+          <div class="tipo-btn {% if tipo_pre=='Saida' %}selected-saida{% endif %}"
+               id="btn-saida" onclick="selectTipo('Saida')">
+            <i class="bi bi-arrow-down-circle-fill fs-4 d-block mb-1 text-danger"></i>
+            <span class="fw-bold">Saída</span><br>
+            <small class="text-muted">Despesa / Custo</small>
+          </div>
+        </div>
+      </div>
+      <input type="hidden" name="tipo" id="tipo-hidden" value="{{ tipo_pre }}">
+    </div>
+
+    <!-- Categoria (atualiza via JS conforme tipo) -->
+    <div class="mb-3">
+      <label for="categoria" class="form-label fw-semibold">Categoria</label>
+      <select name="categoria" id="categoria" class="form-select" required>
+        <option value="">Selecione…</option>
+      </select>
+    </div>
+
+    <!-- Descrição -->
+    <div class="mb-3">
+      <label for="descricao" class="form-label fw-semibold">Descrição</label>
+      <input type="text" id="descricao" name="descricao"
+             class="form-control"
+             placeholder="Ex: Honorários – Processo nº 001/2025"
+             maxlength="200" required>
+    </div>
+
+    <!-- Valor -->
+    <div class="mb-3">
+      <label for="valor" class="form-label fw-semibold">Valor (R$)</label>
+      <div class="input-group">
+        <span class="input-group-text">R$</span>
+        <input type="number" id="valor" name="valor"
+               class="form-control"
+               placeholder="0,00"
+               step="0.01" min="0.01" required>
+      </div>
+    </div>
+
+    <!-- Data -->
+    <div class="mb-4">
+      <label for="data" class="form-label fw-semibold">Data</label>
+      <input type="date" id="data" name="data"
+             class="form-control"
+             value="{{ hoje }}" required>
+    </div>
+
+    <button type="submit" class="btn btn-primary w-100 py-2 fw-bold fs-6">
+      <i class="bi bi-check-circle me-2"></i>Salvar Movimentação
+    </button>
+  </form>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Categorias do Python → JS
+const categorias = {
+  "Entrada": {{ categorias["Entrada"] | tojson }},
+  "Saida":   {{ categorias["Saida"]   | tojson }},
+};
+
+function selectTipo(tipo) {
+  document.getElementById("tipo-hidden").value = tipo;
+
+  const btnE = document.getElementById("btn-entrada");
+  const btnS = document.getElementById("btn-saida");
+  btnE.className = "tipo-btn" + (tipo === "Entrada" ? " selected-entrada" : "");
+  btnS.className = "tipo-btn" + (tipo === "Saida"   ? " selected-saida"   : "");
+
+  // Atualiza categorias
+  const sel = document.getElementById("categoria");
+  sel.innerHTML = '<option value="">Selecione…</option>';
+  categorias[tipo].forEach(c => {
+    const opt = document.createElement("option");
+    opt.value = opt.textContent = c;
+    sel.appendChild(opt);
+  });
+}
+
+// Inicializa com o tipo pré-selecionado
+selectTipo("{{ tipo_pre }}");
+</script>
+{% endblock %}

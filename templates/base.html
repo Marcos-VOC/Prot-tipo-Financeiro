@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}Santos & Associados{% endblock %} | Financeiro</title>
+
+  <!-- Bootstrap 5 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <!-- Bootstrap Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+
+  <style>
+    :root {
+      --brand-dark:   #0f1f3d;
+      --brand-mid:    #1a3a6b;
+      --brand-accent: #c9a84c;   /* dourado */
+      --entrada-color:#198754;
+      --saida-color:  #dc3545;
+      --neutro-color: #0d6efd;
+    }
+
+    body {
+      background: #f4f6fb;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+    }
+
+    /* ── Sidebar ──────────────────────────────────── */
+    #sidebar {
+      width: 240px;
+      min-height: 100vh;
+      background: var(--brand-dark);
+      position: fixed;
+      top: 0; left: 0;
+      display: flex;
+      flex-direction: column;
+      z-index: 100;
+    }
+
+    #sidebar .logo-area {
+      padding: 24px 20px 16px;
+      border-bottom: 1px solid rgba(255,255,255,.1);
+    }
+    #sidebar .logo-area .balanca {
+      font-size: 2rem;
+      color: var(--brand-accent);
+    }
+    #sidebar .logo-area h5 {
+      color: #fff;
+      font-weight: 700;
+      margin: 6px 0 2px;
+      font-size: .95rem;
+      line-height: 1.3;
+    }
+    #sidebar .logo-area small {
+      color: rgba(255,255,255,.45);
+      font-size: .72rem;
+    }
+
+    #sidebar nav {
+      padding: 16px 0;
+      flex: 1;
+    }
+    #sidebar nav a {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 11px 20px;
+      color: rgba(255,255,255,.72);
+      text-decoration: none;
+      font-size: .88rem;
+      transition: all .15s;
+      border-left: 3px solid transparent;
+    }
+    #sidebar nav a:hover,
+    #sidebar nav a.active {
+      color: #fff;
+      background: rgba(255,255,255,.07);
+      border-left-color: var(--brand-accent);
+    }
+    #sidebar nav a i { font-size: 1.1rem; }
+
+    #sidebar .btn-nova {
+      margin: 0 16px 20px;
+      background: var(--brand-accent);
+      color: var(--brand-dark);
+      font-weight: 700;
+      border: none;
+      border-radius: 8px;
+      padding: 10px;
+      text-align: center;
+      text-decoration: none;
+      display: block;
+      font-size: .87rem;
+      transition: opacity .15s;
+    }
+    #sidebar .btn-nova:hover { opacity: .85; }
+
+    /* ── Main content ─────────────────────────────── */
+    #main {
+      margin-left: 240px;
+      padding: 28px 32px;
+      min-height: 100vh;
+    }
+
+    /* ── Cards de resumo ──────────────────────────── */
+    .card-resumo {
+      border: none;
+      border-radius: 14px;
+      box-shadow: 0 2px 12px rgba(0,0,0,.07);
+      transition: transform .15s;
+    }
+    .card-resumo:hover { transform: translateY(-3px); }
+
+    .card-entrada  { border-top: 4px solid var(--entrada-color); }
+    .card-saida    { border-top: 4px solid var(--saida-color); }
+    .card-liquido  { border-top: 4px solid var(--neutro-color); }
+
+    .card-resumo .valor {
+      font-size: 1.7rem;
+      font-weight: 700;
+    }
+    .card-resumo .label {
+      font-size: .8rem;
+      color: #6c757d;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+    .card-resumo .icone {
+      width: 44px; height: 44px;
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.3rem;
+    }
+
+    /* ── Tabela ───────────────────────────────────── */
+    .table-mov thead th {
+      background: var(--brand-dark);
+      color: rgba(255,255,255,.85);
+      font-size: .78rem;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      border: none;
+      font-weight: 600;
+    }
+    .table-mov tbody tr:hover { background: #eef2ff; }
+
+    .badge-entrada { background: #d1fae5; color: #065f46; }
+    .badge-saida   { background: #fee2e2; color: #991b1b; }
+
+    /* ── Cabeçalho de página ──────────────────────── */
+    .page-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+    }
+    .page-header h4 {
+      font-weight: 700;
+      color: var(--brand-dark);
+      margin: 0;
+    }
+
+    /* ── Formulário ───────────────────────────────── */
+    .form-card {
+      background: #fff;
+      border-radius: 14px;
+      box-shadow: 0 2px 12px rgba(0,0,0,.07);
+      padding: 32px;
+      max-width: 620px;
+    }
+
+    /* ── Responsivo ───────────────────────────────── */
+    @media (max-width: 768px) {
+      #sidebar { transform: translateX(-100%); }
+      #main { margin-left: 0; padding: 16px; }
+    }
+  </style>
+  {% block head_extra %}{% endblock %}
+</head>
+
+<body>
+
+<!-- ════════════════ SIDEBAR ════════════════ -->
+<div id="sidebar">
+  <div class="logo-area">
+    <div class="balanca">⚖</div>
+    <h5>Santos &amp; Associados</h5>
+    <small>Controle Financeiro 2025</small>
+  </div>
+
+  <nav>
+    <a href="{{ url_for('dashboard') }}"
+       class="{% if request.endpoint == 'dashboard' %}active{% endif %}">
+      <i class="bi bi-speedometer2"></i> Dashboard
+    </a>
+    <a href="{{ url_for('movimentacoes') }}"
+       class="{% if request.endpoint == 'movimentacoes' %}active{% endif %}">
+      <i class="bi bi-list-ul"></i> Movimentações
+    </a>
+    <a href="{{ url_for('nova') }}?tipo=Entrada"
+       class="{% if request.endpoint == 'nova' %}active{% endif %}">
+      <i class="bi bi-plus-circle"></i> Nova Movimentação
+    </a>
+    <a href="{{ url_for('exportar_config') }}"
+       class="{% if request.endpoint in ['exportar_config','exportar'] %}active{% endif %}">
+      <i class="bi bi-file-earmark-excel"></i> Exportar Relatório
+    </a>
+  </nav>
+
+  <a href="{{ url_for('nova') }}" class="btn-nova">
+    <i class="bi bi-plus-lg me-1"></i> Registrar
+  </a>
+</div>
+<!-- ════════════════ END SIDEBAR ════════════════ -->
+
+<div id="main">
+  {% block content %}{% endblock %}
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

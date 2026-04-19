@@ -1,0 +1,281 @@
+{% extends "base.html" %}
+{% block title %}Exportar Relatório{% endblock %}
+
+{% block head_extra %}
+<style>
+  .tipo-card {
+    border: 2px solid #dee2e6;
+    border-radius: 12px;
+    padding: 16px;
+    cursor: pointer;
+    transition: all .18s;
+    height: 100%;
+  }
+  .tipo-card:hover { border-color: #0f1f3d; background: #f8faff; }
+  .tipo-card.selected {
+    border-color: #c9a84c;
+    background: #fffbef;
+    box-shadow: 0 0 0 3px rgba(201,168,76,.2);
+  }
+  .tipo-card .icone { font-size: 2rem; margin-bottom: 8px; }
+  .tipo-card h6 { font-weight: 700; margin-bottom: 4px; color: #0f1f3d; }
+  .tipo-card small { color: #6c757d; font-size: .78rem; line-height: 1.4; }
+
+  .opcoes-section {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin-bottom: 16px;
+  }
+  .opcoes-section h6 {
+    font-weight: 700;
+    color: #0f1f3d;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .check-cat {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #f4f6fb;
+    border: 1px solid #dee2e6;
+    border-radius: 20px;
+    padding: 4px 12px;
+    margin: 3px;
+    font-size: .82rem;
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .check-cat input { accent-color: #0f1f3d; }
+  .check-cat:has(input:checked) {
+    background: #0f1f3d;
+    color: #fff;
+    border-color: #0f1f3d;
+  }
+
+  #btn-gerar {
+    background: #c9a84c;
+    color: #0f1f3d;
+    font-weight: 700;
+    border: none;
+    padding: 12px 32px;
+    border-radius: 10px;
+    font-size: 1rem;
+    transition: opacity .15s;
+  }
+  #btn-gerar:hover { opacity: .85; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+  <h4><i class="bi bi-file-earmark-excel me-2"></i>Exportar Relatório</h4>
+  <a href="{{ url_for('dashboard') }}" class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-arrow-left me-1"></i> Voltar
+  </a>
+</div>
+
+<form method="POST" action="{{ url_for('exportar') }}">
+
+  <!-- ── 1. Tipo de relatório ─────────────────────────── -->
+  <div class="opcoes-section">
+    <h6><i class="bi bi-layout-text-window-reverse"></i> Tipo de Relatório</h6>
+    <div class="row g-3">
+
+      <div class="col-md-3">
+        <div class="tipo-card selected" data-tipo="mensal" onclick="selectTipo('mensal')">
+          <div class="icone">📅</div>
+          <h6>Relatório Mensal</h6>
+          <small>Resumo completo de um único mês com receitas, despesas e categorias.</small>
+        </div>
+      </div>
+
+      <div class="col-md-3">
+        <div class="tipo-card" data-tipo="periodo" onclick="selectTipo('periodo')">
+          <div class="icone">📊</div>
+          <h6>Comparativo de Período</h6>
+          <small>Tabela com colunas por mês — ideal para comparar evolução ao longo do tempo.</small>
+        </div>
+      </div>
+
+      <div class="col-md-3">
+        <div class="tipo-card" data-tipo="anual" onclick="selectTipo('anual')">
+          <div class="icone">📆</div>
+          <h6>Relatório Anual</h6>
+          <small>Visão completa do ano — todos os 12 meses em uma única planilha.</small>
+        </div>
+      </div>
+
+      <div class="col-md-3">
+        <div class="tipo-card" data-tipo="fluxo" onclick="selectTipo('fluxo')">
+          <div class="icone">💰</div>
+          <h6>Fluxo de Caixa</h6>
+          <small>Extrato cronológico com saldo acumulado — veja como o caixa evoluiu dia a dia.</small>
+        </div>
+      </div>
+
+    </div>
+    <input type="hidden" name="tipo_relatorio" id="tipo_relatorio" value="mensal">
+  </div>
+
+  <!-- ── 2. Período ──────────────────────────────────── -->
+  <div class="opcoes-section">
+    <h6><i class="bi bi-calendar-range"></i> Período</h6>
+
+    <!-- Mensal: só um mês -->
+    <div id="bloco-mensal">
+      <div class="row g-3">
+        <div class="col-sm-3">
+          <label class="form-label mb-1" style="font-size:.83rem">Mês</label>
+          <select name="mes_ini" id="mes_ini" class="form-select form-select-sm">
+            {% for n, nome in meses_pt.items() %}
+              <option value="{{ n }}" {% if n == hoje.month %}selected{% endif %}>{{ nome }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-sm-2">
+          <label class="form-label mb-1" style="font-size:.83rem">Ano</label>
+          <select name="ano_ini" id="ano_ini" class="form-select form-select-sm">
+            {% for a in anos %}<option {% if a == anos[0] %}selected{% endif %}>{{ a }}</option>{% endfor %}
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Período / Fluxo: de → até -->
+    <div id="bloco-periodo" style="display:none">
+      <div class="row g-3 align-items-end">
+        <div class="col-sm-3">
+          <label class="form-label mb-1" style="font-size:.83rem">De — Mês</label>
+          <select name="mes_ini_p" class="form-select form-select-sm" onchange="sincronizar(this,'mes_ini')">
+            {% for n, nome in meses_pt.items() %}
+              <option value="{{ n }}" {% if n == 1 %}selected{% endif %}>{{ nome }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-sm-2">
+          <label class="form-label mb-1" style="font-size:.83rem">Ano</label>
+          <select name="ano_ini_p" class="form-select form-select-sm" onchange="sincronizar(this,'ano_ini')">
+            {% for a in anos %}<option {% if a == anos[0] %}selected{% endif %}>{{ a }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="col-auto text-muted fw-bold pt-4">→</div>
+        <div class="col-sm-3">
+          <label class="form-label mb-1" style="font-size:.83rem">Até — Mês</label>
+          <select name="mes_fim" id="mes_fim" class="form-select form-select-sm">
+            {% for n, nome in meses_pt.items() %}
+              <option value="{{ n }}" {% if n == hoje.month %}selected{% endif %}>{{ nome }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-sm-2">
+          <label class="form-label mb-1" style="font-size:.83rem">Ano</label>
+          <select name="ano_fim" id="ano_fim" class="form-select form-select-sm">
+            {% for a in anos %}<option {% if a == anos[0] %}selected{% endif %}>{{ a }}</option>{% endfor %}
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Anual: só o ano -->
+    <div id="bloco-anual" style="display:none">
+      <div class="row g-3">
+        <div class="col-sm-2">
+          <label class="form-label mb-1" style="font-size:.83rem">Ano</label>
+          <select name="ano_ini_a" class="form-select form-select-sm" onchange="sincronizar(this,'ano_ini')">
+            {% for a in anos %}<option {% if a == anos[0] %}selected{% endif %}>{{ a }}</option>{% endfor %}
+          </select>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── 3. Filtros ─────────────────────────────────── -->
+  <div class="opcoes-section">
+    <h6><i class="bi bi-funnel"></i> Filtros</h6>
+    <div class="row g-3">
+
+      <div class="col-sm-4">
+        <label class="form-label mb-1" style="font-size:.83rem">Tipo de movimentação</label>
+        <select name="filtro_tipo" class="form-select form-select-sm">
+          <option value="">Entradas e Saídas</option>
+          <option value="Entrada">Somente Entradas</option>
+          <option value="Saida">Somente Saídas</option>
+        </select>
+      </div>
+
+      <div class="col-sm-4">
+        <label class="form-label mb-1" style="font-size:.83rem">Ordenar detalhes por</label>
+        <select name="ordenar" class="form-select form-select-sm">
+          <option value="data">Data (mais antigo primeiro)</option>
+          <option value="valor">Valor (maior primeiro)</option>
+          <option value="categoria">Categoria (A → Z)</option>
+        </select>
+      </div>
+
+    </div>
+
+    <!-- Filtro por categoria -->
+    <div class="mt-3">
+      <label class="form-label mb-1" style="font-size:.83rem">
+        Filtrar por categorias <span class="text-muted">(deixe em branco para todas)</span>
+      </label>
+      <div>
+        {% for cat in categorias_db %}
+          <label class="check-cat">
+            <input type="checkbox" name="categorias" value="{{ cat }}">
+            {{ cat }}
+          </label>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 4. Opções extras ───────────────────────────── -->
+  <div class="opcoes-section">
+    <h6><i class="bi bi-toggles"></i> Opções Extras</h6>
+    <div class="form-check form-switch">
+      <input class="form-check-input" type="checkbox" name="incluir_detalhes" value="1"
+             id="inc_det" checked>
+      <label class="form-check-label" for="inc_det" style="font-size:.9rem">
+        Incluir aba com todas as movimentações detalhadas
+        <small class="text-muted d-block">Cria uma aba extra com a lista completa de lançamentos do período.</small>
+      </label>
+    </div>
+  </div>
+
+  <!-- ── Botão gerar ─────────────────────────────────── -->
+  <div class="d-flex align-items-center gap-3 mt-2">
+    <button type="submit" id="btn-gerar">
+      <i class="bi bi-file-earmark-arrow-down me-2"></i>Gerar e Baixar Planilha
+    </button>
+    <small class="text-muted">O download inicia automaticamente.</small>
+  </div>
+
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function selectTipo(tipo) {
+  document.querySelectorAll(".tipo-card").forEach(c => c.classList.remove("selected"));
+  document.querySelector(`[data-tipo="${tipo}"]`).classList.add("selected");
+  document.getElementById("tipo_relatorio").value = tipo;
+
+  document.getElementById("bloco-mensal").style.display  = tipo === "mensal"  ? "" : "none";
+  document.getElementById("bloco-periodo").style.display = (tipo === "periodo" || tipo === "fluxo") ? "" : "none";
+  document.getElementById("bloco-anual").style.display   = tipo === "anual"   ? "" : "none";
+}
+
+// Mantém os campos hidden sincronizados com os selects alternativos
+function sincronizar(src, targetId) {
+  document.getElementById(targetId).value = src.value;
+}
+</script>
+{% endblock %}
